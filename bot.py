@@ -68,32 +68,44 @@ async def deny(update: Update):
         await update.effective_message.reply_text("⛔ Fitur ini khusus admin.")
 
 def main_menu_keyboard():
+    """Dashboard utama SocialPulse dengan tombol ringkas."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📱 Perbarui data platform", callback_data="menu_platform")],
-        [InlineKeyboardButton("📈 Tambah followers mingguan", callback_data="menu_weekly")],
-        [InlineKeyboardButton("📝 Tambah postingan", callback_data="menu_post")],
-        [InlineKeyboardButton("👥 Tambah demografi", callback_data="menu_dem")],
-        [InlineKeyboardButton("📊 Ringkasan dashboard", callback_data="summary"),
-         InlineKeyboardButton("📄 Unduh laporan PDF", callback_data="pdf")],
+        [InlineKeyboardButton("📱 Platform", callback_data="menu_platform"),
+         InlineKeyboardButton("📈 Growth", callback_data="menu_weekly")],
+        [InlineKeyboardButton("📝 Konten", callback_data="menu_post"),
+         InlineKeyboardButton("👥 Audiens", callback_data="menu_dem")],
+        [InlineKeyboardButton("📊 Ringkasan", callback_data="summary"),
+         InlineKeyboardButton("📄 Laporan PDF", callback_data="pdf")],
     ])
 
+
 def cancel_keyboard():
-    return InlineKeyboardMarkup([[InlineKeyboardButton("✖ Batalkan operasi", callback_data="cancel")]])
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✖ Batalkan proses", callback_data="cancel")],
+        [InlineKeyboardButton("🏠 Dashboard", callback_data="back")],
+    ])
+
 
 def platform_keyboard(prefix):
-    rows = [[InlineKeyboardButton(p, callback_data=f"{prefix}_{p}")] for p in PLATFORMS]
-    rows.append([InlineKeyboardButton("✖ Batalkan operasi", callback_data="cancel")])
-    return InlineKeyboardMarkup(rows)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📸 Instagram", callback_data=f"{prefix}_Instagram"),
+         InlineKeyboardButton("▶️ YouTube", callback_data=f"{prefix}_YouTube")],
+        [InlineKeyboardButton("🎵 TikTok", callback_data=f"{prefix}_TikTok")],
+        [InlineKeyboardButton("✖ Batalkan proses", callback_data="cancel")],
+        [InlineKeyboardButton("🏠 Dashboard", callback_data="back")],
+    ])
+
 
 def number_keyboard():
-    rows = []
+    rows=[]
     for i in range(0, len(NUMERIC_SUGGESTIONS), 3):
-        rows.append([
-            InlineKeyboardButton(label, callback_data=f"num:{value}")
-            for label, value in NUMERIC_SUGGESTIONS[i:i+3]
-        ])
-    rows.append([InlineKeyboardButton("✍️ Isi angka sendiri", callback_data="num:custom")])
-    rows.append([InlineKeyboardButton("✖ Batalkan operasi", callback_data="cancel")])
+        rows.append([InlineKeyboardButton(label, callback_data=f"num:{value}")
+                     for label,value in NUMERIC_SUGGESTIONS[i:i+3]])
+    rows.extend([
+        [InlineKeyboardButton("✍️ Masukkan nominal sendiri", callback_data="num:custom")],
+        [InlineKeyboardButton("✖ Batalkan", callback_data="cancel"),
+         InlineKeyboardButton("🏠 Dashboard", callback_data="back")],
+    ])
     return InlineKeyboardMarkup(rows)
 
 def number_value(raw):
@@ -119,18 +131,20 @@ def number_value(raw):
 async def ask(update, context, text, suggestions=False):
     markup = number_keyboard() if suggestions else cancel_keyboard()
     if update.callback_query:
-        await update.callback_query.edit_message_text(text, reply_markup=markup)
+        await update.callback_query.edit_message_text(text, reply_markup=markup, parse_mode="Markdown")
     else:
-        await update.effective_message.reply_text(text, reply_markup=markup)
+        await update.effective_message.reply_text(text, reply_markup=markup, parse_mode="Markdown")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
         return await deny(update)
     context.user_data.clear()
     await update.effective_message.reply_text(
-        "✨ *SOCIALPULSE · ADMIN STUDIO*\n"
-        "Kelola data media sosial dengan lebih praktis.\n\n"
-        "Pilih aktivitas di bawah. Kamu bisa membatalkan proses kapan saja dengan tombol ✖ atau /cancel.",
+        "✨ *SOCIALPULSE*\n"
+        "`ADMIN DASHBOARD`\n\n"
+        "Pusat kontrol pengelolaan performa media sosial.\n"
+        "Pantau platform, pertumbuhan followers, konten, dan demografi audiens dari satu tempat.\n\n"
+        "👇 *Pilih aktivitas:*",
         reply_markup=main_menu_keyboard(), parse_mode="Markdown",
     )
 
@@ -142,16 +156,16 @@ async def menu_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     action = q.data
     context.user_data.clear()
     if action == "menu_platform":
-        await q.edit_message_text("📱 *Perbarui data platform*\nPilih akun yang ingin diperbarui:", reply_markup=platform_keyboard("pf"), parse_mode="Markdown")
+        await q.edit_message_text("📱 *UPDATE PERFORMA PLATFORM*\n\nPilih akun yang ingin diperbarui:", reply_markup=platform_keyboard("pf"), parse_mode="Markdown")
         return PLATFORM
     if action == "menu_weekly":
-        await ask(update, context, "📈 *Tambah data mingguan*\nMasukkan label minggu, misalnya `Minggu 1` atau `2026-W10`.")
+        await ask(update, context, "📈 *CATAT PERTUMBUHAN MINGGUAN*\n\nMasukkan label periode, misalnya `Minggu 1` atau `2026-W10`.")
         return WK_LABEL
     if action == "menu_post":
-        await ask(update, context, "📝 *Tambah postingan*\nMasukkan ID unik postingan, misalnya `IG-001`.")
+        await ask(update, context, "📝 *TAMBAH KONTEN*\n\nMasukkan ID unik postingan, misalnya `IG-001`.")
         return POST_ID
     if action == "menu_dem":
-        await q.edit_message_text("👥 *Tambah demografi audiens*\nPilih platform:", reply_markup=platform_keyboard("dem"), parse_mode="Markdown")
+        await q.edit_message_text("👥 *DATA DEMOGRAFI AUDIENS*\n\nPilih platform:", reply_markup=platform_keyboard("dem"), parse_mode="Markdown")
         return DEM_PLATFORM
     if action == "summary":
         await send_summary(update, context, edit=True)
@@ -163,93 +177,117 @@ async def menu_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
+    message=("↩️ *PROSES DIBATALKAN*\n\n"
+             "Tidak ada perubahan yang disimpan.\n"
+             "Kamu bisa memilih aktivitas lain dari dashboard.")
     if update.callback_query:
-        await update.callback_query.answer("Operasi dibatalkan.")
+        await update.callback_query.answer("Proses dibatalkan.")
         await update.callback_query.edit_message_text(
-            "↩️ *Operasi dibatalkan.* Tidak ada data yang diubah.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Kembali ke menu", callback_data="back")]]),
-            parse_mode="Markdown",
-        )
+            message, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
     elif update.effective_message:
         await update.effective_message.reply_text(
-            "↩️ Operasi dibatalkan. Tidak ada data yang diubah.",
-            reply_markup=main_menu_keyboard(),
-        )
+            message, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
     return ConversationHandler.END
 
 async def back_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
+    q=update.callback_query
     await q.answer()
     if not is_admin(update):
         return await deny(update)
     context.user_data.clear()
-    await q.edit_message_text("🏠 *ADMIN STUDIO*\nPilih aktivitas:", reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+    await q.edit_message_text(
+        "✨ *SOCIALPULSE*\n`ADMIN DASHBOARD`\n\n"
+        "Pusat kontrol siap. Pilih aktivitas berikutnya:",
+        reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+    return ConversationHandler.END
 
 async def platform_selected(update, context):
     q = update.callback_query
     await q.answer()
-    context.user_data["platform"] = q.data.replace("pf_", "")
-    await ask(update, context, f"📱 *{context.user_data['platform']}*\nMasukkan total followers terbaru.\n\nContoh: `24500`, `24.5k`.", True)
+    context.user_data["platform"] = q.data.replace("pf_", "", 1)
+    await ask(
+        update, context,
+        f"📱 *{context.user_data['platform']}*\nMasukkan total followers terbaru.\n\nContoh: `24500`, `24.5k`.",
+        True,
+    )
     return PF_FOLLOWERS
 
-async def save_numeric_step(update, context, key, prompt, next_state, next_key=None):
+
+async def get_numeric_input(update):
+    """Ambil input dari tombol inline atau pesan teks."""
+    if update.callback_query:
+        q = update.callback_query
+        await q.answer()
+        return q.data.split(":", 1)[1]
+    return (update.effective_message.text or "").strip()
+
+
+async def numeric_step(update, context, key, prompt, current_state, next_state):
+    """Tangani nominal cepat/custom tanpa berpindah state sebelum nilai valid."""
+    raw = await get_numeric_input(update)
+
+    if raw == "custom":
+        context.user_data["await_custom"] = key
+        await ask(
+            update, context,
+            f"✍️ Ketik angka untuk {key} secara manual. Contoh: `25000`, `25k`, atau `1.5k`.",
+            False,
+        )
+        return current_state
+
     try:
-        raw = update.callback_query.data.split(":", 1)[1] if update.callback_query else update.effective_message.text
-        if raw == "custom":
-            await ask(update, context, prompt, True)
-            return next_state
-        context.user_data[key] = number_value(raw)
-        await ask(update, context, prompt, True)
-        return next_state
+        value = number_value(raw)
     except ValueError as exc:
+        context.user_data["await_custom"] = key
         await ask(update, context, f"⚠️ {exc}\n\n{prompt}", True)
-        return next_state
+        return current_state
+
+    context.user_data.pop("await_custom", None)
+    context.user_data[key] = value
+    await ask(update, context, prompt, True)
+    return next_state
+
 
 async def pf_followers(update, context):
-    try:
-        raw = update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw == "custom":
-            await ask(update, context, "Ketik jumlah followers secara manual, contoh `24500` atau `24.5k`.", False)
-            context.user_data["await_custom"] = "followers"
-            return PF_FOLLOWERS
-        context.user_data["followers"] = number_value(raw)
-        await ask(update, context, "Masukkan total views terbaru:", True)
-        return PF_VIEWS
-    except ValueError as e:
-        await ask(update, context, f"⚠️ {e}\nMasukkan total followers:", True)
-        return PF_FOLLOWERS
+    return await numeric_step(
+        update, context, "followers", "Masukkan total views terbaru:",
+        PF_FOLLOWERS, PF_VIEWS,
+    )
+
 
 async def pf_views(update, context):
-    return await numeric_handler(update, context, "views", "Masukkan total likes:", PF_LIKES)
-async def pf_likes(update, context):
-    return await numeric_handler(update, context, "likes", "Masukkan total comments:", PF_COMMENTS)
-async def pf_comments(update, context):
-    return await numeric_handler(update, context, "comments", "Masukkan total shares:", PF_SHARES)
+    return await numeric_step(
+        update, context, "views", "Masukkan total likes:", PF_VIEWS, PF_LIKES
+    )
 
-async def numeric_handler(update, context, key, prompt, next_state):
-    try:
-        raw = update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw == "custom":
-            await ask(update, context, f"Ketik angka untuk {key} (contoh 25000 atau 25k).", False)
-            context.user_data["await_custom"] = key
-            return next_state - 1 if next_state == PF_VIEWS else next_state
-        if context.user_data.get("await_custom") == key:
-            context.user_data.pop("await_custom", None)
-        context.user_data[key] = number_value(raw)
-        await ask(update, context, prompt, True)
-        return next_state
-    except ValueError as e:
-        await ask(update, context, f"⚠️ {e}\n{prompt}", True)
-        return next_state - 1
+
+async def pf_likes(update, context):
+    return await numeric_step(
+        update, context, "likes", "Masukkan total comments:", PF_LIKES, PF_COMMENTS
+    )
+
+
+async def pf_comments(update, context):
+    return await numeric_step(
+        update, context, "comments", "Masukkan total shares:", PF_COMMENTS, PF_SHARES
+    )
+
 
 async def pf_shares(update, context):
+    raw = await get_numeric_input(update)
+    if raw == "custom":
+        context.user_data["await_custom"] = "shares"
+        await ask(update, context, "✍️ Ketik jumlah shares secara manual, contoh `2500` atau `2.5k`.", False)
+        return PF_SHARES
+
     try:
-        raw = update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw == "custom":
-            await ask(update, context, "Ketik jumlah shares secara manual.", False)
-            context.user_data["await_custom"] = "shares"
-            return PF_SHARES
         shares = number_value(raw)
+    except ValueError as exc:
+        await ask(update, context, f"⚠️ {exc}\n\nMasukkan total shares:", True)
+        return PF_SHARES
+
+    context.user_data.pop("await_custom", None)
+    try:
         update_platform(
             context.user_data["platform"], context.user_data["followers"],
             context.user_data["views"], context.user_data["likes"],
@@ -270,8 +308,9 @@ async def finish(update, context, message):
 
 async def weekly_label(update, context):
     context.user_data["week"] = update.effective_message.text.strip()
-    await ask(update, context, "Pilih platform untuk data minggu tersebut:", False)
-    await update.effective_message.reply_text("Pilih platform:", reply_markup=platform_keyboard("wk"))
+    await update.effective_message.reply_text(
+        "📈 *CATAT PERTUMBUHAN MINGGUAN*\\n\\nPilih platform:",
+        reply_markup=platform_keyboard("wk"), parse_mode="Markdown")
     return WK_PLATFORM
 
 async def weekly_platform(update, context):
@@ -281,14 +320,24 @@ async def weekly_platform(update, context):
     return WK_FOLLOWERS
 
 async def weekly_followers(update, context):
+    raw = await get_numeric_input(update)
+    if raw == "custom":
+        context.user_data["await_custom"] = "weekly_followers"
+        await ask(update, context, "✍️ Ketik jumlah followers secara manual, contoh `12500` atau `12.5k`.", False)
+        return WK_FOLLOWERS
     try:
-        raw=update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw=="custom":
-            await ask(update,context,"Ketik jumlah followers secara manual:",False); return WK_FOLLOWERS
-        add_weekly_followers(context.user_data["week"],context.user_data["platform"],number_value(raw))
-        await finish(update,context,"✅ Data followers mingguan berhasil ditambahkan.")
+        value = number_value(raw)
+    except ValueError as exc:
+        await ask(update, context, f"⚠️ {exc}\n\nMasukkan jumlah followers pada minggu ini:", True)
+        return WK_FOLLOWERS
+
+    context.user_data.pop("await_custom", None)
+    try:
+        add_weekly_followers(context.user_data["week"], context.user_data["platform"], value)
+        await finish(update, context, "✅ Data followers mingguan berhasil ditambahkan.")
     except Exception as exc:
-        await finish(update,context,f"❌ Gagal menyimpan data: {exc}")
+        logger.exception("Penambahan followers mingguan gagal")
+        await finish(update, context, f"❌ Gagal menyimpan data: {exc}")
     return ConversationHandler.END
 
 async def post_id(update, context):
@@ -305,24 +354,33 @@ async def post_title(update, context):
     await ask(update,context,"Masukkan jumlah likes:",True)
     return POST_LIKES
 async def post_likes(update, context):
-    try:
-        raw=update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw=="custom":
-            await ask(update,context,"Ketik jumlah likes:",False); return POST_LIKES
-        context.user_data["likes"]=number_value(raw)
-        await ask(update,context,"Masukkan jumlah views:",True)
-        return POST_VIEWS
-    except ValueError as e:
-        await ask(update,context,f"⚠️ {e}\nMasukkan jumlah likes:",True); return POST_LIKES
+    return await numeric_step(
+        update, context, "likes", "Masukkan jumlah views:", POST_LIKES, POST_VIEWS
+    )
+
+
 async def post_views(update, context):
+    raw = await get_numeric_input(update)
+    if raw == "custom":
+        context.user_data["await_custom"] = "post_views"
+        await ask(update, context, "✍️ Ketik jumlah views secara manual:", False)
+        return POST_VIEWS
     try:
-        raw=update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw=="custom":
-            await ask(update,context,"Ketik jumlah views:",False); return POST_VIEWS
-        add_post(context.user_data["post_id"],context.user_data["platform"],context.user_data["title"],context.user_data["likes"],number_value(raw))
-        await finish(update,context,"✅ Postingan berhasil ditambahkan.")
+        views = number_value(raw)
+    except ValueError as exc:
+        await ask(update, context, f"⚠️ {exc}\n\nMasukkan jumlah views:", True)
+        return POST_VIEWS
+
+    context.user_data.pop("await_custom", None)
+    try:
+        add_post(
+            context.user_data["post_id"], context.user_data["platform"],
+            context.user_data["title"], context.user_data["likes"], views,
+        )
+        await finish(update, context, "✅ Postingan berhasil ditambahkan.")
     except Exception as exc:
-        await finish(update,context,f"❌ Gagal menyimpan postingan: {exc}")
+        logger.exception("Penambahan postingan gagal")
+        await finish(update, context, f"❌ Gagal menyimpan postingan: {exc}")
     return ConversationHandler.END
 
 async def dem_platform(update, context):
@@ -335,14 +393,24 @@ async def dem_age(update, context):
     await ask(update,context,"Masukkan jumlah penonton pada kelompok umur ini:",True)
     return DEM_VIEWERS
 async def dem_viewers(update, context):
+    raw = await get_numeric_input(update)
+    if raw == "custom":
+        context.user_data["await_custom"] = "demographic_viewers"
+        await ask(update, context, "✍️ Ketik jumlah penonton secara manual:", False)
+        return DEM_VIEWERS
     try:
-        raw=update.callback_query.data.split(":",1)[1] if update.callback_query else update.effective_message.text
-        if raw=="custom":
-            await ask(update,context,"Ketik jumlah penonton:",False); return DEM_VIEWERS
-        add_demographic(context.user_data["platform"],context.user_data["age_group"],number_value(raw))
-        await finish(update,context,"✅ Data demografi berhasil ditambahkan.")
+        viewers = number_value(raw)
+    except ValueError as exc:
+        await ask(update, context, f"⚠️ {exc}\n\nMasukkan jumlah penonton pada kelompok umur ini:", True)
+        return DEM_VIEWERS
+
+    context.user_data.pop("await_custom", None)
+    try:
+        add_demographic(context.user_data["platform"], context.user_data["age_group"], viewers)
+        await finish(update, context, "✅ Data demografi berhasil ditambahkan.")
     except Exception as exc:
-        await finish(update,context,f"❌ Gagal menyimpan demografi: {exc}")
+        logger.exception("Penambahan demografi gagal")
+        await finish(update, context, f"❌ Gagal menyimpan demografi: {exc}")
     return ConversationHandler.END
 
 def fmt(value):
@@ -433,19 +501,47 @@ def make_pdf(data):
 async def send_summary(update, context, edit=False):
     try:
         data=get_all_data()
-        p=data["platforms"]
-        lines=["📊 *RINGKASAN SOCIALPULSE*",""]
-        if p.empty: lines.append("Belum ada data platform.")
-        for _,r in p.iterrows():
-            lines.append(f"• *{r['platform']}*: {fmt(r.get('followers'))} followers · {fmt(r.get('total_views'))} views")
+        platforms=data.get("platforms", pd.DataFrame()).copy()
+        posts=data.get("posts", pd.DataFrame()).copy()
+        followers=pd.to_numeric(platforms.get("followers", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
+        views=pd.to_numeric(platforms.get("total_views", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
+        interactions=sum(pd.to_numeric(platforms.get(c, pd.Series(dtype=float)), errors="coerce").fillna(0).sum()
+                         for c in ("likes", "comments", "shares"))
+        rate=(interactions/views*100) if views else 0
+        lines=["📊 *SOCIALPULSE · OVERVIEW*", "`LIVE DATA SNAPSHOT`", "",
+               "*RINGKASAN UTAMA*",
+               f"👥 Followers  ·  *{fmt(followers)}*",
+               f"👁️ Total views ·  *{fmt(views)}*",
+               f"⚡ Engagement ·  *{rate:.2f}%*", "",
+               "📱 *PERFORMA PLATFORM*"]
+        if platforms.empty:
+            lines.append("_Belum ada data platform._")
+        else:
+            for _,r in platforms.iterrows():
+                lines.append(f"• *{r.get('platform','Platform')}* — {fmt(r.get('followers'))} followers · {fmt(r.get('total_views'))} views")
+        lines.extend(["", "🏆 *KONTEN TERATAS*"])
+        if not posts.empty and "likes" in posts.columns:
+            ranked=posts.copy()
+            ranked["_likes"]=pd.to_numeric(ranked["likes"], errors="coerce").fillna(0)
+            for i,(_,r) in enumerate(ranked.sort_values("_likes", ascending=False).head(3).iterrows(),1):
+                title=str(r.get("title", "Tanpa judul")).replace("*", "")
+                if len(title)>36: title=title[:33]+"..."
+                lines.append(f"{i}. {title} — *{fmt(r.get('likes'))} likes*")
+        else:
+            lines.append("_Belum ada data postingan._")
+        lines.extend(["", f"_Diperbarui {datetime.now():%d %b %Y · %H:%M}_"])
         text="\n".join(lines)
-        markup=main_menu_keyboard()
-        if update.callback_query: await update.callback_query.edit_message_text(text,reply_markup=markup,parse_mode="Markdown")
-        else: await update.effective_message.reply_text(text,reply_markup=markup,parse_mode="Markdown")
-    except Exception as exc:
+        if update.callback_query:
+            await update.callback_query.edit_message_text(text, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        else:
+            await update.effective_message.reply_text(text, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+    except Exception:
         logger.exception("Ringkasan gagal")
-        if update.callback_query: await update.callback_query.edit_message_text(f"❌ Gagal membaca data: {exc}",reply_markup=main_menu_keyboard())
-        else: await update.effective_message.reply_text(f"❌ Gagal membaca data: {exc}",reply_markup=main_menu_keyboard())
+        msg="❌ *Ringkasan belum dapat dimuat.*\nPeriksa koneksi Google Sheets, lalu coba lagi."
+        if update.callback_query:
+            await update.callback_query.edit_message_text(msg, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
+        else:
+            await update.effective_message.reply_text(msg, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
 
 async def send_pdf(update, context):
     q=update.callback_query
@@ -468,7 +564,11 @@ def build_application():
     if not token: raise RuntimeError("TELEGRAM_TOKEN belum diatur.")
     app=Application.builder().token(token).build()
     # All conversations share a global cancel fallback.
-    common_fallbacks=[CommandHandler("cancel",cancel),CallbackQueryHandler(cancel,pattern="^cancel$")]
+    common_fallbacks=[
+        CommandHandler("cancel", cancel),
+        CallbackQueryHandler(cancel, pattern="^cancel$"),
+        CallbackQueryHandler(back_menu, pattern="^back$"),
+    ]
     conv=ConversationHandler(
         entry_points=[CallbackQueryHandler(menu_router,pattern="^menu_(platform|weekly|post|dem)$")],
         states={
@@ -497,7 +597,7 @@ def build_application():
     app.add_handler(conv)
     app.add_handler(CallbackQueryHandler(back_menu,pattern="^back$"))
     app.add_handler(CallbackQueryHandler(menu_router,pattern="^(summary|pdf)$"))
-    app.add_handler(CommandHandler("pdf",lambda u,c: send_pdf_command(u,c)))
+    app.add_handler(CommandHandler("pdf", send_pdf_command))
     app.add_handler(CommandHandler("menu",start))
     app.add_handler(CommandHandler("cancel",cancel))
     return app
